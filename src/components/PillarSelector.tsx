@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   GENRE_HERITAGE_OPTIONS,
   INSTRUMENTATION_OPTIONS,
@@ -6,7 +6,7 @@ import {
   PRODUCTION_POLISH_OPTIONS
 } from '../data/pillars';
 import { PillarState } from '../types';
-import { Disc, Guitar, Mic2, Sparkles, Plus, Check } from 'lucide-react';
+import { Disc, Guitar, Mic2, Sparkles, Plus, Check, Undo2, Redo2 } from 'lucide-react';
 
 interface PillarSelectorProps {
   pillarState: PillarState;
@@ -18,6 +18,46 @@ export const PillarSelector: React.FC<PillarSelectorProps> = ({
   setPillarState
 }) => {
   const [activeTab, setActiveTab] = useState<'genre' | 'instrument' | 'vocal' | 'polish'>('genre');
+
+  // Undo / Redo History Stack
+  const [history, setHistory] = useState<PillarState[]>([pillarState]);
+  const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const isUndoRedoAction = useRef<boolean>(false);
+
+  // Sync changes to history stack
+  useEffect(() => {
+    if (isUndoRedoAction.current) {
+      isUndoRedoAction.current = false;
+      return;
+    }
+
+    const currentHistoryState = history[historyIndex];
+    if (JSON.stringify(pillarState) !== JSON.stringify(currentHistoryState)) {
+      const updatedHistory = history.slice(0, historyIndex + 1);
+      updatedHistory.push(pillarState);
+      if (updatedHistory.length > 50) updatedHistory.shift();
+      setHistory(updatedHistory);
+      setHistoryIndex(updatedHistory.length - 1);
+    }
+  }, [pillarState]);
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const prevIdx = historyIndex - 1;
+      isUndoRedoAction.current = true;
+      setHistoryIndex(prevIdx);
+      setPillarState(history[prevIdx]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const nextIdx = historyIndex + 1;
+      isUndoRedoAction.current = true;
+      setHistoryIndex(nextIdx);
+      setPillarState(history[nextIdx]);
+    }
+  };
 
   const toggleTag = (category: keyof PillarState, tag: string) => {
     if (!Array.isArray(pillarState[category])) return;
@@ -34,26 +74,44 @@ export const PillarSelector: React.FC<PillarSelectorProps> = ({
     }));
   };
 
-  const handleCustomAdd = (category: 'customGenre' | 'customInstrument' | 'customVocal' | 'customPolish', value: string) => {
-    setPillarState(prev => ({
-      ...prev,
-      [value]: value
-    }));
-  };
-
   return (
     <div className="glass-panel rounded-2xl p-5 border border-slate-800">
       
-      {/* Header Tabs */}
-      <div className="flex items-center justify-between mb-4 border-b border-slate-800/80 pb-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-cyan-400" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-            4-Pillar Prompt Matrix
-          </h2>
+      {/* Header Tabs & Undo/Redo Toolbar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4 border-b border-slate-800/80 pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+              4-Pillar Prompt Matrix
+            </h2>
+          </div>
+
+          {/* Undo / Redo Buttons */}
+          <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              className="p-1 px-2.5 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-300"
+              title="Undo design change"
+            >
+              <Undo2 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Undo</span>
+            </button>
+
+            <button
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              className="p-1 px-2.5 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-300"
+              title="Redo design change"
+            >
+              <Redo2 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Redo</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+        <div className="flex bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-semibold overflow-x-auto">
           <button
             onClick={() => setActiveTab('genre')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${

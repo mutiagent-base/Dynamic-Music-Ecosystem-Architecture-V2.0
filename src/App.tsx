@@ -9,7 +9,12 @@ import { AttributionHub } from './components/AttributionHub';
 import { ExportModal } from './components/ExportModal';
 import { CloudBlueprintsModal } from './components/CloudBlueprintsModal';
 import { GoogleTasksModal } from './components/GoogleTasksModal';
-import { PillarState, SongMetadata, Preset } from './types';
+import { ClassEnrollmentModal } from './components/ClassEnrollmentModal';
+import { QueryExecutorModal } from './components/QueryExecutorModal';
+import { CustomerServiceModal } from './components/CustomerServiceModal';
+import { CustomerServiceWidget } from './components/CustomerServiceWidget';
+import { PillarState, SongMetadata, Preset, MetadataVersionSnapshot } from './types';
+import { assembleStylePrompt } from './utils/promptEngine';
 import { User } from './lib/firebase';
 import {
   saveSongBlueprint,
@@ -17,7 +22,7 @@ import {
   deleteSongBlueprint,
   SavedSongDoc,
 } from './lib/firestoreService';
-import { Cloud, Save, FolderOpen, CheckCircle2, AlertCircle, ListTodo } from 'lucide-react';
+import { Cloud, Save, FolderOpen, CheckCircle2, AlertCircle, ListTodo, GraduationCap, Terminal } from 'lucide-react';
 
 export const App: React.FC = () => {
   // 0. User State
@@ -86,6 +91,9 @@ Fade to black... 0101...
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
+  const [isClassesModalOpen, setIsClassesModalOpen] = useState(false);
+  const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [currentBlueprintId, setCurrentBlueprintId] = useState<string | null>(null);
 
   // Firestore Sync State
@@ -153,14 +161,35 @@ Fade to black... 0101...
 
     try {
       setIsSaving(true);
+
+      const snapshot: MetadataVersionSnapshot = {
+        id: `ver-${Date.now()}`,
+        timestamp: new Date().toLocaleString(),
+        title: songMetadata.title || 'Untitled Blueprint',
+        concept: songMetadata.concept || '',
+        lyrics: songMetadata.lyrics || '',
+        stylePrompt: songMetadata.stylePrompt || assembleStylePrompt(pillarState).sanitizedStylePrompt,
+        bpm: pillarState.bpm,
+        musicalKey: pillarState.musicalKey,
+        savedBy: user.displayName || user.email || 'Firebase User',
+      };
+
+      const updatedHistory = [snapshot, ...(songMetadata.versionHistory || [])];
+      const updatedMetadata = {
+        ...songMetadata,
+        versionHistory: updatedHistory,
+      };
+
+      setSongMetadata(updatedMetadata);
+
       const docId = await saveSongBlueprint(
         user.uid,
-        songMetadata,
+        updatedMetadata,
         pillarState,
         currentBlueprintId || undefined
       );
       setCurrentBlueprintId(docId);
-      setSaveMessage('Saved to Firebase Cloud Firestore!');
+      setSaveMessage('Saved version snapshot & blueprint to Firebase Cloud!');
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err: any) {
       console.error('Save to Firestore Error:', err);
@@ -206,78 +235,24 @@ Fade to black... 0101...
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col">
-      {/* Global Header */}
+      {/* Global Merged Header Toolbar */}
       <Header
         user={user}
         setUser={setUser}
+        currentBlueprintId={currentBlueprintId}
+        savedSongsCount={savedSongs.length}
+        isSaving={isSaving}
+        saveMessage={saveMessage}
+        onSaveToFirestore={handleSaveToFirestore}
+        onOpenCloudModal={() => setIsCloudModalOpen(true)}
         onOpenTasksModal={() => setIsTasksModalOpen(true)}
+        onOpenClassesModal={() => setIsClassesModalOpen(true)}
+        onOpenQueryModal={() => setIsQueryModalOpen(true)}
+        onOpenSupportModal={() => setIsSupportModalOpen(true)}
       />
 
       {/* Main Content Dashboard */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Firebase Storage Quick Action Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-[#101728] to-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <Cloud className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Firebase Cloud Blueprint Storage & Workspace Tasks</span>
-                {currentBlueprintId && (
-                  <span className="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-mono">
-                    ID: {currentBlueprintId.slice(0, 8)}...
-                  </span>
-                )}
-              </h2>
-              <p className="text-xs text-slate-400">
-                {user
-                  ? `Connected as ${user.displayName || user.email || 'Guest'}. Real-time Firestore sync & Google Tasks active.`
-                  : 'Sign in or start guest session to persist custom prompts and export production tasks to Google Tasks.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {saveMessage && (
-              <span className="text-xs px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl flex items-center gap-1.5 animate-fadeIn">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{saveMessage}</span>
-              </span>
-            )}
-
-            <button
-              onClick={() => setIsTasksModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600/90 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs shadow-md transition-all border border-blue-500/30"
-            >
-              <ListTodo className="w-4 h-4 text-blue-200" />
-              <span>Google Tasks</span>
-            </button>
-
-            <button
-              onClick={handleSaveToFirestore}
-              disabled={isSaving}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded-xl text-xs shadow-md transition-all disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSaving ? 'Saving...' : 'Save to Firebase'}</span>
-            </button>
-
-            <button
-              onClick={() => setIsCloudModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700 transition-all relative"
-            >
-              <FolderOpen className="w-4 h-4 text-cyan-400" />
-              <span>My Saved Blueprints</span>
-              {savedSongs.length > 0 && (
-                <span className="ml-1 bg-cyan-500 text-slate-950 font-bold px-1.5 py-0.2 text-[10px] rounded-full">
-                  {savedSongs.length}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-
         {/* Top Output Bar & Guardrail Check */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -319,6 +294,7 @@ Fade to black... 0101...
               metadata={songMetadata}
               setMetadata={setSongMetadata}
               pillarState={pillarState}
+              setPillarState={setPillarState}
               onOpenExportModal={() => setIsExportModalOpen(true)}
             />
           </div>
@@ -354,6 +330,7 @@ Fade to black... 0101...
         onClose={() => setIsExportModalOpen(false)}
         metadata={songMetadata}
         pillarState={pillarState}
+        savedSongs={savedSongs}
       />
 
       {/* Cloud Blueprints Modal */}
@@ -373,6 +350,31 @@ Fade to black... 0101...
         user={user}
         metadata={songMetadata}
         pillarState={pillarState}
+      />
+
+      {/* Class Enrollment Modal */}
+      <ClassEnrollmentModal
+        isOpen={isClassesModalOpen}
+        onClose={() => setIsClassesModalOpen(false)}
+        user={user}
+      />
+
+      {/* Query Executor & Result Set Modal */}
+      <QueryExecutorModal
+        isOpen={isQueryModalOpen}
+        onClose={() => setIsQueryModalOpen(false)}
+        user={user}
+      />
+
+      {/* Exceptional Real-Time Customer Service Modal & Floating Widget */}
+      <CustomerServiceModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+        user={user}
+      />
+
+      <CustomerServiceWidget
+        onOpenModal={() => setIsSupportModalOpen(true)}
       />
     </div>
   );

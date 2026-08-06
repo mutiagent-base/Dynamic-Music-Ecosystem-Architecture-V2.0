@@ -96,7 +96,7 @@ Ground Truth Database Reference ID: ${metadata.attribution.masterpiecePropId}
 `;
 }
 
-export function generateSongMetadataJSON(metadata: SongMetadata): string {
+export function generateSongMetadataJSON(metadata: SongMetadata, pillarState?: PillarState): string {
   return JSON.stringify({
     "$schema": "https://promptcraft.ai/schemas/song-metadata-v2.json",
     "project": "promptcraft-sonic-blueprint",
@@ -120,6 +120,7 @@ export function generateSongMetadataJSON(metadata: SongMetadata): string {
         "repository": "https://github.com/mutiagent-base/promptcraft-sonic-blueprint"
       },
       "created_at": new Date().toISOString()
-    }
+    },
+    "pillarState": pillarState || null
   }, null, 2);
 }

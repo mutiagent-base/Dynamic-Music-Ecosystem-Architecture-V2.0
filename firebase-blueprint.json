@@ -50,6 +50,38 @@
         "createdAt": { "type": "string" }
       },
       "required": ["title", "bpm", "musicalKey", "userId"]
+    },
+    "enrollment": {
+      "title": "Public Class Enrollment",
+      "description": "User enrollment in a public masterclass or workshop",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "classTitle": { "type": "string" },
+        "studentName": { "type": "string" },
+        "studentEmail": { "type": "string" },
+        "experienceLevel": { "type": "string" },
+        "userId": { "type": "string" },
+        "enrolledAt": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["classId", "classTitle", "studentName", "studentEmail", "userId"]
+    },
+    "ticket": {
+      "title": "Customer Service Ticket",
+      "description": "Real-time user support inquiry or priority concierge ticket",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "messages": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "rating": { "type": "number" }
+      },
+      "required": ["userId", "subject", "category"]
     }
   },
   "firestore": {
@@ -64,6 +96,14 @@
     "/presets/{presetId}": {
       "schema": "preset",
       "description": "Collection of custom and shared presets"
+    },
+    "/enrollments/{enrollmentId}": {
+      "schema": "enrollment",
+      "description": "Collection of public class enrollments"
+    },
+    "/tickets/{ticketId}": {
+      "schema": "ticket",
+      "description": "Collection of customer support tickets"
     }
   }
 }
