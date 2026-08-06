@@ -60,4 +60,5 @@ export interface Preset {
   musicalKey: string;
   sampleLyrics: string;
   rating: number;
+  isCustom?: boolean;
 }
