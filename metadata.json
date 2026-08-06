@@ -1,0 +1,8 @@
+{
+  "name": "PromptCraft Sonic Blueprint",
+  "description": "4-Pillar Suno AI Music Prompt Engine, Guardrail Moderation, and Song Metadata Generator",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
